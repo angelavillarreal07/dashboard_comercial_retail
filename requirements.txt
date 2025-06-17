@@ -5,3 +5,4 @@ plotly
 numpy
 openpyxl
 gunicorn
+dash-auth
