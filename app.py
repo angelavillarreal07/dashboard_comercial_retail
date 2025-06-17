@@ -88,7 +88,7 @@ La aplicación requiere dos archivos Excel en la misma carpeta que el script de 
 6.  Abre la dirección en tu navegador web.
 """
 # --- 2. FUNCIÓN DE CARGA Y PREPARACIÓN DE DATOS ---
-def cargar_y_preparar_datos():
+ddef cargar_y_preparar_datos():
     try:
         # Intenta cargar los archivos reales
         df_ventas_full = pd.read_excel('VENTAS_ALL_BRANDS.xlsx')
@@ -100,66 +100,77 @@ def cargar_y_preparar_datos():
         df_arrendamientos_full.drop_duplicates(inplace=True)
 
     except FileNotFoundError:
-        # Si los archivos no se encuentran, genera datos de ejemplo
+        # Si los archivos no se encuentran, genera datos de ejemplo avanzados
         print("ADVERTENCIA: Archivos Excel no encontrados. Generando datos de ejemplo para demostración pública.")
         
-        marcas_ejemplo = ['AURA', 'LUMIN', 'ZIRCON', 'ONYX', 'SOLARA', 'NOCTIS']
+        np.random.seed(42) # Para que los datos aleatorios sean siempre los mismos
+
+        # --- Perfiles de Marcas para Segmentación ---
+        brand_profiles = [
+            {'MARCA': 'AURA', 'tipo': 'Lujo', 'precio_promedio': 250, 'factor_volumen': 0.6},
+            {'MARCA': 'LUMIN', 'tipo': 'Fast Fashion', 'precio_promedio': 40, 'factor_volumen': 1.8},
+            {'MARCA': 'ZIRCON', 'tipo': 'Equilibrado', 'precio_promedio': 90, 'factor_volumen': 1.1},
+            {'MARCA': 'ONYX', 'tipo': 'Bajo Rendimiento', 'precio_promedio': 35, 'factor_volumen': 0.5},
+            {'MARCA': 'SOLARA', 'tipo': 'Premium', 'precio_promedio': 180, 'factor_volumen': 0.8},
+            {'MARCA': 'NOCTIS', 'tipo': 'Alto Tráfico', 'precio_promedio': 50, 'factor_volumen': 1.5},
+        ]
+        marcas_ejemplo = [p['MARCA'] for p in brand_profiles]
+        
         ubicaciones_por_ciudad = {
             'CARACAS': ['SAMBIL LA CANDELARIA', 'TOLON', 'LIDER', 'SAMBIL CHACAO'],
             'VALENCIA': ['SAMBIL VALENCIA'],
             'MARACAIBO': ['SAMBIL MARACAIBO'],
             'BARQUISIMETO': ['SAMBIL BARQUISIMETO'],
-            'MARGARITA': ['PAMPATAR']
         }
-        todas_ubicaciones = [u for sublist in ubicaciones_por_ciudad.values() for u in sublist]
 
-        # 1. Crear el DataFrame de Arrendamientos FALSO
+        # --- Crear DataFrames Ficticios Basados en Perfiles ---
         arrend_data = []
-        np.random.seed(42) # Para que los datos aleatorios sean siempre los mismos
-        for ubicacion in todas_ubicaciones:
-            # Asignar entre 2 y 4 marcas aleatorias a cada ubicación
-            marcas_en_ubicacion = np.random.choice(marcas_ejemplo, size=np.random.randint(2, 5), replace=False)
-            for marca in marcas_en_ubicacion:
-                arrend_data.append({
-                    'UBICACION': ubicacion,
-                    'MARCA': marca,
-                    'Mt2': np.random.randint(80, 250),
-                    'CANON FIJO': np.random.randint(1500, 6000)
-                })
+        for ciudad, ubicaciones in ubicaciones_por_ciudad.items():
+            for ubicacion in ubicaciones:
+                # Asignar marcas aleatorias a cada ubicación
+                marcas_en_ubicacion = np.random.choice(marcas_ejemplo, size=np.random.randint(3, len(marcas_ejemplo)), replace=False)
+                for marca_nombre in marcas_en_ubicacion:
+                    arrend_data.append({
+                        'UBICACION': ubicacion, 'MARCA': marca_nombre, 'CIUDAD': ciudad,
+                        'Mt2': np.random.randint(80, 250),
+                        'CANON FIJO': np.random.randint(1500, 8000) * (1.5 if ciudad == 'CARACAS' else 1) # Canon más caro en Caracas
+                    })
         df_arrendamientos_full = pd.DataFrame(arrend_data)
 
-        # 2. Crear el DataFrame de Ventas FALSO
-        valid_stores_df = df_arrendamientos_full[['UBICACION', 'MARCA']].copy()
-        ciudad_map = {ubicacion: ciudad for ciudad, ubicaciones in ubicaciones_por_ciudad.items() for ubicacion in ubicaciones}
-        valid_stores_df['CIUDAD'] = valid_stores_df['UBICACION'].map(ciudad_map)
-
-        fechas_ejemplo = pd.to_datetime(pd.date_range(start='2023-01-01', end='2024-12-31', freq='D'))
-        
         ventas_data = []
-        for index, store in valid_stores_df.iterrows():
+        fechas_ejemplo = pd.to_datetime(pd.date_range(start='2023-01-01', end='2025-12-31', freq='D'))
+        
+        # Crear un mapa de perfiles para búsqueda rápida
+        perfiles_map = {p['MARCA']: p for p in brand_profiles}
+
+        for index, store in df_arrendamientos_full.iterrows():
+            perfil = perfiles_map[store['MARCA']]
             for fecha in fechas_ejemplo:
-                # Añadir aleatoriedad para que no todas las tiendas vendan todos los días
                 if np.random.rand() > 0.3: # 70% de probabilidad de tener ventas
-                    venta = np.random.uniform(200, 4500)
-                    # Hacer que las unidades y tickets sean lógicos en relación a la venta
-                    unidades = max(1, int(venta / np.random.randint(50, 150)))
-                    tickets = max(1, int(unidades / np.random.uniform(1.2, 2.5)))
+                    
+                    # Generar tickets basados en el perfil de la marca
+                    base_tickets = np.random.randint(5, 50)
+                    tickets = max(1, int(base_tickets * perfil['factor_volumen']))
+
+                    # Generar unidades y ventas basados en los tickets y el precio promedio
+                    unidades = max(tickets, int(tickets * np.random.uniform(1.1, 2.5)))
+                    venta = unidades * perfil['precio_promedio'] * np.random.uniform(0.85, 1.15) # Pequeña variación de precio
                     
                     ventas_data.append({
-                        'FECHA': fecha, 'MARCA': store['MARCA'],
-                        'UBICACION': store['UBICACION'], 'CIUDAD': store['CIUDAD'],
-                        'VENTA': venta, 'UNIDADES': unidades, 'TICKETS': tickets
+                        'FECHA': fecha, 'MARCA': store['MARCA'], 'UBICACION': store['UBICACION'],
+                        'CIUDAD': store['CIUDAD'], 'VENTA': venta, 'UNIDADES': unidades, 'TICKETS': tickets
                     })
         df_ventas_full = pd.DataFrame(ventas_data)
 
-    # --- Procesamiento de datos (el resto de la función se mantiene igual) ---
+
+    # --- Procesamiento de datos 
     df_ventas = df_ventas_full.copy()
     df_ventas.columns = [str(col).strip().upper() for col in df_ventas.columns]
     df_ventas.rename(columns={'VENTA': 'VENTAS', 'UNIDADES': 'UNIDADES', 'TICKETS': 'TICKETS'}, inplace=True, errors='ignore')
     if 'FECHA' in df_ventas.columns: df_ventas.rename(columns={'FECHA': 'FECHA_DATETIME'}, inplace=True)
     
-    # ... (el resto de la lógica de procesamiento y unión se mantiene) ...
-    # ...
+    # ... 
+   
     
     df_ventas['MARCA'] = df_ventas['MARCA'].astype(str).str.strip() 
     df_ventas['UBICACION'] = df_ventas['UBICACION'].astype(str).str.strip()
