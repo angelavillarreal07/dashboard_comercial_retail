@@ -88,7 +88,7 @@ La aplicación requiere dos archivos Excel en la misma carpeta que el script de 
 6.  Abre la dirección en tu navegador web.
 """
 # --- 2. FUNCIÓN DE CARGA Y PREPARACIÓN DE DATOS ---
-ddef cargar_y_preparar_datos():
+def cargar_y_preparar_datos():
     try:
         # Intenta cargar los archivos reales
         df_ventas_full = pd.read_excel('VENTAS_ALL_BRANDS.xlsx')
